@@ -46,7 +46,13 @@ in
   config = lib.mkIf cfg.enable {
     shell.packages =
       let
-        toolchain = inputs.fenix.packages.${system}.${cfg.channel};
+        fenixPkgs = inputs.fenix.packages.${system};
+        toolchain =
+          {
+            inherit (fenixPkgs) stable beta;
+            nightly = fenixPkgs.complete;
+          }
+          .${cfg.channel};
       in
       attrValues {
         inherit (toolchain)
