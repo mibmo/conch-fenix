@@ -11,18 +11,21 @@ let
   inherit (lib) types;
   inherit (lib.attrsets) attrValues;
   inherit (lib.options) mkEnableOption mkOption;
-
-  toolchain = inputs.fenix.packages.${system}.stable;
 in
 {
   options.rust = {
     enable = mkEnableOption "rust development environment";
-    package = mkOption {
-      type = with types; package;
-      default = toolchain.rust;
-      defaultText = "whichever rust package `version` chooses";
+    channel = mkOption {
+      type =
+        with types;
+        enum [
+          "stable"
+          "beta"
+          "nightly"
+        ];
+      default = "stable";
       description = ''
-        rust package to use.
+        release channel to use.
       '';
     };
     /*
@@ -41,13 +44,17 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    shell.packages = attrValues {
-      inherit (toolchain)
-        cargo
-        rust-src
-        rustc
-        rustfmt
-        ;
-    };
+    shell.packages =
+      let
+        toolchain = inputs.fenix.packages.${system}.${cfg.channel};
+      in
+      attrValues {
+        inherit (toolchain)
+          cargo
+          rust-src
+          rustc
+          rustfmt
+          ;
+      };
   };
 }
