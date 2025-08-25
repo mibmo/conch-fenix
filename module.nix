@@ -9,8 +9,10 @@ let
   cfg = config.rust;
 
   inherit (lib) types;
-  inherit (lib.attrsets) attrValues;
+  inherit (lib.attrsets) attrNames attrValues;
   inherit (lib.options) mkEnableOption mkOption;
+
+  fenixPkgs = inputs.fenix.packages.${system};
 in
 {
   options.rust = {
@@ -28,39 +30,35 @@ in
         release channel to use.
       '';
     };
-    /*
-      version = mkOption {
-        type =
-          with types;
-          oneOf [
-            "beta"
-            "nightly"
-            "stable"
-            semverPattern
-          ];
-        default = "stable";
-      };
-    */
+    targets = mkOption {
+      type = with types; listOf (enum (attrNames fenixPkgs.targets));
+      default = [ ];
+      description = ''
+        targets to support cross compiling to.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
     shell.packages =
       let
-        fenixPkgs = inputs.fenix.packages.${system};
         toolchain =
           {
             inherit (fenixPkgs) stable beta;
             nightly = fenixPkgs.complete;
           }
           .${cfg.channel};
+        components =
+          attrValues {
+            inherit (toolchain)
+              cargo
+              rust-src
+              rustc
+              rustfmt
+              ;
+          }
+          ++ (map (target: fenixPkgs.targets.${target}.latest.rust-std) cfg.targets);
       in
-      attrValues {
-        inherit (toolchain)
-          cargo
-          rust-src
-          rustc
-          rustfmt
-          ;
-      };
+      [ (fenixPkgs.combine components) ];
   };
 }
